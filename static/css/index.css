@@ -186,6 +186,3 @@ mark {
 .bold {
   font-weight: 600;
 }
-
-#results-carousel .item { display: none; }
-#results-carousel .item.is-active { display: block; }
