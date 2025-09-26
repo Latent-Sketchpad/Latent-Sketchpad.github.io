@@ -1,34 +1,62 @@
 window.HELP_IMPROVE_VIDEOJS = false;
 
 $(document).ready(function () {
+  // ========== 如果页面还有别的轮播，继续初始化它们（排除视频这个容器） ==========
   var options = {
     slidesToScroll: 1,
     slidesToShow: 1,
     loop: true,
     infinite: true,
-    autoplay: false,   // ❌ 关闭定时自动切换
+    autoplay: true,        // 其他轮播保留自动切换
+    autoplaySpeed: 5000,
   };
+  // 关键：不要把 #results-carousel 选进去
+  bulmaCarousel.attach('.carousel:not(#results-carousel)', options);
 
-  // 初始化 carousel
-  var carousels = bulmaCarousel.attach('.carousel', options);
-  var carousel = carousels[0]; // 只取第一个（你的页面就一个 carousel）
+  bulmaSlider.attach();
 
-  // 获取所有视频
-  var videos = document.querySelectorAll("#results-carousel video");
+  // ========== 我们自己的“视频播完再切”的控制 ==========
+  const container = document.querySelector('#results-carousel');
+  if (!container) return;
 
-  // 监听每个视频的结束事件
-  videos.forEach((video, idx) => {
-    video.addEventListener("ended", () => {
-      carousel.next(); // 切换到下一个
-      const nextIdx = (idx + 1) % videos.length;
-      videos[nextIdx].play(); // 播放下一个视频
+  const items = Array.from(container.querySelectorAll('.item'));
+  const videos = items.map(it => it.querySelector('video'));
+  let idx = 0;
+
+  // 初始化：只显示第一个
+  function show(i) {
+    items.forEach((el, k) => {
+      el.classList.toggle('is-active', k === i);
+    });
+  }
+
+  function playCurrent() {
+    const v = videos[idx];
+    if (!v) return;
+    // 确保允许自动播放
+    v.muted = true;
+    v.setAttribute('playsinline', '');
+    v.currentTime = 0;
+    const p = v.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // 某些浏览器可能需要用户手势；保持静音可最大化自动播放成功率
+      });
+    }
+  }
+
+  // 监听每个视频的结束，切到下一个并播放
+  videos.forEach((v, i) => {
+    if (!v) return;
+    v.removeAttribute('loop'); // 确保会触发 ended
+    v.addEventListener('ended', () => {
+      idx = (i + 1) % videos.length;
+      show(idx);
+      playCurrent();
     });
   });
 
-  // 页面加载后自动播放第一个视频
-  if (videos.length > 0) {
-    videos[0].play();
-  }
-
-  bulmaSlider.attach();
+  // 首屏：显示并播放第一个
+  show(0);
+  playCurrent();
 });
